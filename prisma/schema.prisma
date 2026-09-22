@@ -1,0 +1,403 @@
+// Prisma schema for Mojazine SaaS
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ORGANIZATIONS & USERS
+model Organization {
+  id                String      @id @default(cuid())
+  name              String      @unique
+  slug              String      @unique
+  description       String?
+  logoUrl           String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  users             User[]
+  vehicles          Vehicle[]
+  drivers           Driver[]
+  deliveryTasks     DeliveryTask[]
+  warehouses        WarehouseLocation[]
+  inventoryItems    InventoryItem[]
+  maintenanceTasks  MaintenanceTask[]
+  spareParts        SparePart[]
+  fuelTanks         FuelTank[]
+  alerts            SystemAlert[]
+  dailyMetrics      DailyMetric[]
+
+  @@index([slug])
+}
+
+model User {
+  id                String      @id @default(cuid())
+  email             String      @unique
+  name              String
+  password          String
+  role              String      @default("viewer") // admin, manager, operator, viewer
+  organizationId    String
+  isActive          Boolean     @default(true)
+  lastLogin         DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+// VEHICLES & FLEET
+model Vehicle {
+  id                String      @id @default(cuid())
+  organizationId    String
+  plateNumber       String
+  registrationDate  DateTime
+  capacity          Float       // in tons
+  currentWeight     Float       @default(0)
+  status            String      @default("idle") // active, idle, maintenance, offline
+  lastSeenAt        DateTime?
+  currentLocation   String?     // lat,lng
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gpsHistory       VehicleGPS[]
+  telemetry        VehicleTelemetry?
+  driver           Driver?
+  tasks            DeliveryTask[]
+  fuelConsumption  FuelConsumption[]
+  maintenanceTasks MaintenanceTask[]
+  alerts           VehicleAlert[]
+  ecoScores        DailyEcoScore[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([plateNumber])
+}
+
+// REAL-TIME GPS TRACKING (partitioned by month)
+model VehicleGPS {
+  id                String      @id @default(cuid())
+  vehicleId         String
+  latitude          Float
+  longitude         Float
+  speed             Float       @default(0)
+  heading           Float?
+  accuracy          Float?
+  altitude          Float?
+  timestamp         DateTime    @default(now())
+
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, timestamp])
+  @@index([timestamp])
+}
+
+model VehicleTelemetry {
+  id                String      @id @default(cuid())
+  vehicleId         String      @unique
+  speed             Float       @default(0)
+  rpm               Float       @default(0)
+  engineTemp        Float       @default(0)
+  fuelLevel         Float       @default(0)
+  fuelRate          Float       @default(0)
+  accelerationX     Float       @default(0)
+  accelerationY     Float       @default(0)
+  accelerationZ     Float       @default(0)
+  brakePressure     Float       @default(0)
+  tirePressureFR    Float       @default(0)
+  tirePressureFL    Float       @default(0)
+  tirePressureRR    Float       @default(0)
+  tirePressureRL    Float       @default(0)
+  batteryVoltage    Float       @default(0)
+  odometer          Float       @default(0)
+  updatedAt         DateTime    @updatedAt
+
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+}
+
+model HarshEvent {
+  id                String      @id @default(cuid())
+  vehicleId         String
+  type              String      // "harsh_acceleration", "harsh_braking", "speeding"
+  severity          Float       // 0-1
+  latitude          Float
+  longitude         Float
+  timestamp         DateTime    @default(now())
+
+  @@index([vehicleId, timestamp])
+}
+
+// DRIVERS
+model Driver {
+  id                String      @id @default(cuid())
+  organizationId    String
+  name              String
+  licenseNumber     String
+  phone            String?
+  vehicleId         String?     @unique
+  status            String      @default("active")
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  ecoScores         DailyEcoScore[]
+
+  @@index([organizationId])
+  @@index([licenseNumber])
+}
+
+// DELIVERY & TMS
+model DeliveryTask {
+  id                String      @id @default(cuid())
+  organizationId    String
+  vehicleId         String?
+  taskNumber        String
+  status            String      @default("pending") // pending, in_transit, completed, failed
+  pickupLocation    String
+  deliveryLocation  String
+  plannedDate       DateTime
+  actualDate        DateTime?
+  distance          Float?      // km
+  duration          Int?        // minutes
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  deliveryLines     DeliveryLine[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+model DeliveryLine {
+  id                String      @id @default(cuid())
+  deliveryTaskId    String
+  inventoryItemId   String
+  quantity          Float
+  unit              String      // "tons", "units"
+  sequenceOrder     Int
+
+  deliveryTask      DeliveryTask @relation(fields: [deliveryTaskId], references: [id], onDelete: Cascade)
+  inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([deliveryTaskId])
+}
+
+// WAREHOUSE MANAGEMENT
+model WarehouseLocation {
+  id                String      @id @default(cuid())
+  organizationId    String
+  name              String
+  type              String      // "depot", "quarry", "warehouse", "site"
+  latitude          Float
+  longitude         Float
+  capacity          Float       // in tons
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inventory         InventoryItem[]
+  rfidEvents        RFIDEvent[]
+
+  @@index([organizationId])
+  @@index([type])
+}
+
+model InventoryItem {
+  id                String      @id @default(cuid())
+  organizationId    String
+  warehouseId       String
+  name              String      // "Ciment", "Gravier", "Sable"
+  quantity          Float       // in tons
+  lastUpdatedAt     DateTime    @default(now())
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  warehouse         WarehouseLocation @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  deliveryLines     DeliveryLine[]
+  rfidEvents        RFIDEvent[]
+
+  @@index([organizationId])
+  @@index([warehouseId])
+}
+
+model RFIDEvent {
+  id                String      @id @default(cuid())
+  warehouseId       String
+  inventoryItemId   String
+  eventType         String      // "in", "out"
+  quantity          Float
+  timestamp         DateTime    @default(now())
+
+  warehouse         WarehouseLocation @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  inventoryItem     InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([warehouseId, timestamp])
+}
+
+// FUEL MANAGEMENT
+model FuelTank {
+  id                String      @id @default(cuid())
+  organizationId    String
+  location          String      // "Tangier", "Jorf", "Agadir"
+  capacity          Float       // liters
+  currentLevel      Float       @default(0)
+  lastFilledAt      DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fuelFills         FuelFill[]
+
+  @@index([organizationId])
+}
+
+model FuelFill {
+  id                String      @id @default(cuid())
+  fuelTankId        String
+  quantity          Float       // liters
+  cost              Float?      // MAD
+  timestamp         DateTime    @default(now())
+
+  fuelTank          FuelTank    @relation(fields: [fuelTankId], references: [id], onDelete: Cascade)
+
+  @@index([fuelTankId, timestamp])
+}
+
+model FuelConsumption {
+  id                String      @id @default(cuid())
+  vehicleId         String
+  consumptionRate   Float       // L/100km
+  consumedQuantity  Float       // liters
+  distance          Float       // km
+  timestamp         DateTime    @default(now())
+
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, timestamp])
+}
+
+// MAINTENANCE & GMAO
+model MaintenanceTask {
+  id                String      @id @default(cuid())
+  organizationId    String
+  vehicleId         String
+  type              String      // "preventive", "corrective"
+  status            String      @default("pending") // pending, in_progress, completed
+  description       String
+  priority          String      @default("normal") // low, normal, high, critical
+  plannedDate       DateTime
+  actualDate        DateTime?
+  cost              Float?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  spareParts        SparePart[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+model SparePart {
+  id                String      @id @default(cuid())
+  organizationId    String
+  name              String
+  quantity          Float       @default(0)
+  unitCost          Float
+  maintenanceTaskId String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  maintenanceTask   MaintenanceTask? @relation(fields: [maintenanceTaskId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+}
+
+// ALERTS
+model SystemAlert {
+  id                String      @id @default(cuid())
+  organizationId    String
+  vehicleId         String?
+  type              String      // "harsh_event", "fuel_low", "speed_violation", "geofence", "offline", "maintenance_due"
+  severity          String      @default("info") // critical, warning, info
+  message           String
+  isResolved        Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  resolvedAt        DateTime?
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([severity, isResolved])
+  @@index([createdAt])
+}
+
+model VehicleAlert {
+  id                String      @id @default(cuid())
+  vehicleId         String
+  type              String
+  data              String      // JSON
+  timestamp         DateTime    @default(now())
+
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, timestamp])
+}
+
+// ECO-DRIVING SCORING
+model DailyEcoScore {
+  id                String      @id @default(cuid())
+  vehicleId         String
+  driverId          String?
+  date              DateTime
+  ecoScore          Float       // 0-100
+  speedScore        Float       // 0-100
+  accelerationScore Float       // 0-100
+  brakingScore      Float       // 0-100
+  idleScore         Float       // 0-100
+  efficiencyScore   Float       // 0-100
+  maintenanceScore  Float       // 0-100
+  totalDistance     Float       // km
+  totalFuelUsed     Float       // liters
+  harshEventCount   Int         @default(0)
+
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver            Driver?     @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@unique([vehicleId, date])
+  @@index([vehicleId])
+  @@index([date])
+}
+
+// DAILY METRICS
+model DailyMetric {
+  id                String      @id @default(cuid())
+  organizationId    String
+  date              DateTime
+  totalVehicles     Int         @default(0)
+  activeVehicles    Int         @default(0)
+  totalDeliveries   Int         @default(0)
+  completedDeliveries Int       @default(0)
+  totalTonnage      Float       @default(0)
+  totalDistance     Float       @default(0)
+  totalFuelUsed     Float       @default(0)
+  avgEcoScore       Float       @default(0)
+  costPerKm         Float       @default(0)
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, date])
+  @@index([organizationId])
+}
