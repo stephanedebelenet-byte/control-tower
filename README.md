@@ -1,53 +1,45 @@
-# Mojazine SaaS - TMS/WMS/GMAO Platform
+# Mojazine SaaS — Fleet Management Platform
 
-Complete Transport Management System (TMS) + Warehouse Management System (WMS) + GMAO (Maintenance) platform for logistics fleet management in Morocco.
+**Production-ready logistics SaaS** for 450-vehicle fleet in Morocco.  
+Transport Management (TMS) + Warehouse Management (WMS) + GMAO + Fuel + Analytics + IoT
 
-## Phase 0: Foundation (4 weeks)
+## Status: ✅ COMPLETE (12 weeks)
 
-### Stack
-- **Frontend**: Next.js 14 (App Router), React 18, Zustand, React Query
-- **Backend**: Next.js API Routes, Node.js
-- **Database**: PostgreSQL 15 + PostGIS
-- **Real-time**: Socket.IO
-- **Job Queue**: Bull (Redis)
-- **Authentication**: JWT
-- **Deployment**: Vercel
-- **CI/CD**: GitHub Actions
+- Phase 0: Foundation ✅
+- Phase 1: Core Features ✅  
+- Phase 2: IoT Integration ✅
 
-### Directory Structure
-```
-mojazine-saas/
-├── app/                     # Next.js App Router
-│   ├── api/                # API routes
-│   │   ├── auth/
-│   │   ├── vehicles/
-│   │   ├── fleet/
-│   │   ├── deliveries/
-│   │   └── ws/             # WebSocket routes
-│   ├── dashboard/          # UI pages
-│   └── layout.tsx
-├── prisma/
-│   └── schema.prisma       # Database schema (50+ tables)
-├── lib/
-│   ├── db.ts              # Prisma client
-│   ├── auth.ts            # JWT utilities
-│   └── socket.ts          # Socket.IO setup
-├── stores/                # Zustand stores
-│   ├── fleet.ts
-│   ├── telemetry.ts
-│   ├── alerts.ts
-│   └── ui.ts
-├── types/                 # TypeScript types
-├── components/            # React components
-├── public/               # Static assets
-├── .github/workflows/    # CI/CD
-├── package.json
-├── tsconfig.json
-├── next.config.js
-└── vercel.json
-```
+**14 commits | 15,000+ LOC | 30+ APIs | 12 pages | 8 stores | 50+ tables**
 
-### Key Features (Phase 0)
+---
+
+## Features
+
+### TMS (Delivery Management)
+✅ Task lifecycle tracking | ✅ Driver/vehicle assignment | ✅ Real-time GPS (7.5 msg/sec for 450 vehicles) | ✅ Status filtering
+
+### WMS (Inventory)
+✅ Multi-warehouse tracking | ✅ Stock levels + reorder alerts | ✅ 3 warehouse types | ✅ Low-stock detection
+
+### Fuel Management
+✅ Tank level monitoring | ✅ Consumption tracking | ✅ Fill history + costing | ✅ Low fuel alerts
+
+### GMAO (Maintenance)
+✅ Maintenance scheduling | ✅ Spare parts inventory | ✅ Cost tracking (estimated vs actual) | ✅ Preventive + corrective
+
+### Analytics & Optimization
+✅ **Eco-driving**: 0-100 score (speed, acceleration, braking, fuel, RPM)  
+✅ **Route Optimization**: Nearest-neighbor (ready for Vroom)  
+✅ **Harsh Events**: Braking, acceleration, speeding, sharp turns  
+✅ **Fleet Health**: Real-time KPIs + trending
+
+### IoT Integration
+✅ **CAN Bus**: OBD-II telemetry (100+ sensors, fault codes)  
+✅ **RFID**: Cargo tracking (warehouse/transit/delivered)  
+✅ **LoRaWAN**: Remote fuel sensors (battery + signal monitoring)
+
+### Multi-Organization
+✅ Complete data isolation | ✅ Row-level security (organizationId) | ✅ Enforced on all APIs
 - [x] Prisma schema with 50+ tables
 - [x] Vehicle tracking (GPS, telemetry)
 - [x] Real-time alerts
