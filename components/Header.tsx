@@ -93,6 +93,9 @@ export function Header({ metrics }: HeaderProps) {
         <Link href="/assets" className={`transition ${isActive('/assets')}`}>
           Assets
         </Link>
+        <Link href="/sensors" className={`transition ${isActive('/sensors')}`}>
+          Sensors
+        </Link>
       </nav>
     </header>
   )
