@@ -172,6 +172,51 @@ async function main() {
     })
   }
 
+  // Create demo maintenance tasks
+  const maintenanceTypes = [
+    'Oil Change',
+    'Tire Rotation',
+    'Brake Inspection',
+    'Filter Replacement',
+    'Engine Service',
+  ]
+  for (let i = 0; i < 5; i++) {
+    const vehicle = vehicles[i % vehicles.length]
+    const daysFromNow = Math.floor(Math.random() * 60) - 15 // -15 to +45 days
+    const scheduledDate = new Date()
+    scheduledDate.setDate(scheduledDate.getDate() + daysFromNow)
+
+    const maintenanceStatus =
+      daysFromNow < -5 ? 'scheduled' :
+      daysFromNow < 0 ? 'in_progress' :
+      'scheduled'
+
+    const task = await prisma.maintenanceTask.create({
+      data: {
+        vehicleId: vehicle.id,
+        taskType: maintenanceTypes[i % maintenanceTypes.length],
+        description: 'Regular maintenance',
+        scheduledDate,
+        estimatedCost: Math.floor(Math.random() * 500) + 100,
+        status: maintenanceStatus as any,
+        notes: 'Demo maintenance task',
+      },
+    })
+
+    // Add spare parts
+    const partNames = ['Oil Filter', 'Air Filter', 'Brake Pads', 'Tire', 'Spark Plug']
+    for (let j = 0; j < Math.floor(Math.random() * 2) + 1; j++) {
+      await prisma.sparePart.create({
+        data: {
+          maintenanceTaskId: task.id,
+          partName: partNames[Math.floor(Math.random() * partNames.length)],
+          quantity: Math.floor(Math.random() * 3) + 1,
+          unitPrice: Math.floor(Math.random() * 150) + 20,
+        },
+      })
+    }
+  }
+
   console.log('✓ Database seeded successfully')
   console.log('✓ Organization:', org.slug)
   console.log('✓ Admin user:', user.email)

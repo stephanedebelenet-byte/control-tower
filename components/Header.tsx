@@ -78,6 +78,12 @@ export function Header({ metrics }: HeaderProps) {
         <Link href="/warehouses" className={`transition ${isActive('/warehouses')}`}>
           Warehouses
         </Link>
+        <Link href="/fuel" className={`transition ${isActive('/fuel')}`}>
+          Fuel
+        </Link>
+        <Link href="/maintenance" className={`transition ${isActive('/maintenance')}`}>
+          Maintenance
+        </Link>
       </nav>
     </header>
   )
