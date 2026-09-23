@@ -217,6 +217,47 @@ async function main() {
     }
   }
 
+  // Create demo eco-scores
+  for (const vehicle of vehicles) {
+    for (let day = 0; day < 30; day++) {
+      const date = new Date()
+      date.setDate(date.getDate() - day)
+
+      const score = Math.floor(Math.random() * 40) + 60 // 60-100 score
+
+      await prisma.dailyEcoScore.create({
+        data: {
+          vehicleId: vehicle.id,
+          date,
+          score,
+          speedConsistency: Math.random() * 40 + 60,
+          accelerationSmootness: Math.random() * 40 + 60,
+          brakingEfficiency: Math.random() * 40 + 60,
+          fuelEfficiency: Math.random() * 40 + 60,
+          rpmManagement: Math.random() * 40 + 60,
+        },
+      })
+    }
+  }
+
+  // Create demo harsh events
+  const eventTypes = ['harsh_braking', 'harsh_acceleration', 'speeding', 'sharp_turn']
+  for (let i = 0; i < 15; i++) {
+    const vehicle = vehicles[Math.floor(Math.random() * vehicles.length)]
+    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)]
+    const severity = Math.random() > 0.7 ? 'critical' : 'warning'
+
+    await prisma.vehicleAlert.create({
+      data: {
+        vehicleId: vehicle.id,
+        type: eventType as any,
+        severity: severity as any,
+        message: `${eventType} detected`,
+        resolved: Math.random() > 0.5,
+      },
+    })
+  }
+
   console.log('✓ Database seeded successfully')
   console.log('✓ Organization:', org.slug)
   console.log('✓ Admin user:', user.email)
