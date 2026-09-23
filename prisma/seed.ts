@@ -240,6 +240,70 @@ async function main() {
     }
   }
 
+  // Create demo CAN telemetry data
+  for (const vehicle of vehicles) {
+    for (let hour = 0; hour < 24; hour++) {
+      const timestamp = new Date()
+      timestamp.setHours(timestamp.getHours() - hour)
+
+      await prisma.vehicleTelemetry.create({
+        data: {
+          vehicleId: vehicle.id,
+          speed: Math.floor(Math.random() * 120),
+          rpm: Math.floor(Math.random() * 4000) + 800,
+          engineTemp: Math.floor(Math.random() * 30) + 85,
+          coolantTemp: Math.floor(Math.random() * 20) + 90,
+          oilPressure: Math.floor(Math.random() * 40) + 30,
+          fuelRate: Math.random() * 0.1 + 0.02,
+          acceleratorPedalPos: Math.random() * 100,
+          brakePedalPos: Math.random() * 80,
+          throttlePos: Math.random() * 100,
+          gearPosition: ['P', 'R', 'N', 'D'][Math.floor(Math.random() * 4)],
+          odometer: Math.floor(Math.random() * 150000) + 50000,
+          voltage: 14 + Math.random() * 2,
+          amperage: Math.random() * 100 - 50,
+          batteryHealth: Math.floor(Math.random() * 40) + 60,
+          tirePressures: {
+            fl: 32 + Math.random() * 4,
+            fr: 32 + Math.random() * 4,
+            rl: 32 + Math.random() * 4,
+            rr: 32 + Math.random() * 4,
+          },
+          absActive: Math.random() > 0.8,
+          tcActive: Math.random() > 0.7,
+          timestamp,
+        },
+      })
+    }
+  }
+
+  // Create demo fault codes
+  const faultCodes = [
+    { dtc: 'P0101', desc: 'Mass or Volume Air Flow Circuit' },
+    { dtc: 'P0300', desc: 'Random/Multiple Cylinder Misfire Detected' },
+    { dtc: 'P0400', desc: 'Exhaust Gas Recirculation Flow' },
+    { dtc: 'P0420', desc: 'Catalyst System Efficiency' },
+    { dtc: 'P0500', desc: 'Vehicle Speed Sensor' },
+    { dtc: 'P1000', desc: 'OBD System Readiness' },
+  ]
+
+  for (let i = 0; i < 8; i++) {
+    const vehicle = vehicles[i % vehicles.length]
+    const faultCode = faultCodes[Math.floor(Math.random() * faultCodes.length)]
+    const severity = Math.random() > 0.6 ? 'critical' : 'warning'
+
+    await prisma.systemAlert.create({
+      data: {
+        vehicleId: vehicle.id,
+        code: faultCode.dtc,
+        description: faultCode.desc,
+        severity: severity as any,
+        resolved: Math.random() > 0.7,
+        acknowledged: Math.random() > 0.5,
+      },
+    })
+  }
+
   // Create demo harsh events
   const eventTypes = ['harsh_braking', 'harsh_acceleration', 'speeding', 'sharp_turn']
   for (let i = 0; i < 15; i++) {
