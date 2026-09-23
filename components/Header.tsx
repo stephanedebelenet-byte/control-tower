@@ -90,6 +90,9 @@ export function Header({ metrics }: HeaderProps) {
         <Link href="/diagnostics" className={`transition ${isActive('/diagnostics')}`}>
           Diagnostics
         </Link>
+        <Link href="/assets" className={`transition ${isActive('/assets')}`}>
+          Assets
+        </Link>
       </nav>
     </header>
   )
