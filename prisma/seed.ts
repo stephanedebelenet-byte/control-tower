@@ -65,10 +65,20 @@ async function main() {
   for (const warehouse of warehouses) {
     await prisma.inventoryItem.create({
       data: {
-        organizationId: org.id,
         warehouseId: warehouse.id,
-        name: 'Ciment',
+        productType: 'Ciment',
         quantity: 500,
+        unit: 'tons',
+        reorderLevel: 100,
+      },
+    })
+    await prisma.inventoryItem.create({
+      data: {
+        warehouseId: warehouse.id,
+        productType: 'Sable',
+        quantity: 800,
+        unit: 'tons',
+        reorderLevel: 150,
       },
     })
   }
@@ -106,6 +116,58 @@ async function main() {
         location: name,
         capacity: 10000,
         currentLevel: Math.random() * 10000,
+      },
+    })
+  }
+
+  // Get vehicles and drivers for deliveries
+  const vehicles = await prisma.vehicle.findMany({
+    where: { organizationId: org.id },
+    take: 5,
+  })
+  const drivers = await prisma.driver.findMany({
+    where: { organizationId: org.id },
+    take: 3,
+  })
+
+  // Create demo deliveries
+  const deliveryStatuses = ['pending', 'in_progress', 'completed']
+  for (let i = 0; i < 8; i++) {
+    const status =
+      deliveryStatuses[Math.floor(Math.random() * deliveryStatuses.length)]
+    const warehouse = warehouses[Math.floor(Math.random() * warehouses.length)]
+    const vehicle = vehicles[Math.floor(Math.random() * vehicles.length)]
+    const driver = drivers[Math.floor(Math.random() * drivers.length)]
+
+    await prisma.deliveryTask.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        driverId: driver.id,
+        warehouseId: warehouse.id,
+        targetLocation: [
+          'Casablanca',
+          'Rabat',
+          'Fes',
+          'Marrakech',
+          'Tangier',
+        ][Math.floor(Math.random() * 5)],
+        productType: ['Ciment', 'Sable', 'Agrégats'][Math.floor(Math.random() * 3)],
+        quantity: Math.floor(Math.random() * 10) + 5,
+        status: status as any,
+        notes: 'Demo delivery task',
+        lines: {
+          create: [
+            {
+              lineNumber: 1,
+              productType: ['Ciment', 'Sable', 'Agrégats'][
+                Math.floor(Math.random() * 3)
+              ],
+              quantity: Math.floor(Math.random() * 10) + 5,
+              unit: 'tons',
+            },
+          ],
+        },
       },
     })
   }
